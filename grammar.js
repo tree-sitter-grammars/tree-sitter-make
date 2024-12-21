@@ -1,3 +1,13 @@
+/**
+ * @file Make grammar for tree-sitter
+ * @author Alexandre Muller
+ * @author Amaan Qureshi <amaanq12@gmail.com>
+ * @license MIT
+ */
+
+/// <reference types="tree-sitter-cli/dsl" />
+// @ts-check
+
 const CHARSET = 'a-zA-Z0-9%\\+\\-\\.@_\\*\\?\\/';
 const ESCAPE_SET = 'abtnvfrE!"#\\$&\'\\(\\)\\*,;<>\\?\\[\\\\\\]^`{\\|}~';
 
@@ -66,14 +76,10 @@ module.exports = grammar({
   ],
 
   extras: $ => [
-    /[\s]/,
+    /\s/,
     alias(token(seq('\\', /\r?\n|\r/)), '\\'),
     $.comment,
   ],
-
-  conflicts: $ => [],
-
-  precedences: $ => [],
 
   rules: {
     // 3.1
@@ -419,7 +425,7 @@ module.exports = grammar({
     ),
 
     // 10.5.3
-    automatic_variable: $ => seq(
+    automatic_variable: _ => seq(
       choice('$', '$$'),
       choice(
         choice(
@@ -520,7 +526,7 @@ module.exports = grammar({
       token(prec(-1, /([^'"$\r\n\\]|\\\\|\\[^\r\n])+/)),
     )),
 
-    word: $ => token(repeat1(choice(
+    word: _ => token(repeat1(choice(
       new RegExp('[' + CHARSET + ']'),
       new RegExp('\\\\[' + ESCAPE_SET + ']'),
       new RegExp('\\\\[0-9]{3}'),
@@ -536,12 +542,12 @@ module.exports = grammar({
     // }}}
     // Tokens {{{
     // TODO external parser for .RECIPEPREFIX
-    _recipeprefix: $ => '\t',
+    _recipeprefix: _ => '\t',
 
     // TODO prefixed line in define is recipe
-    _rawline: $ => token(/.*[\r\n]+/), // any line
+    _rawline: _ => token(/.*[\r\n]+/), // any line
 
-    _shell_text_without_split: $ => text($,
+    _shell_text_without_split: $ => text(
       noneOf(...['\\$', '\\r', '\\n', '\\']),
       choice(
         $._variable,
@@ -562,7 +568,7 @@ module.exports = grammar({
       $.shell_command,
     ),
 
-    text: $ => text($,
+    text: $ => text(
       choice(
         noneOf(...['\\$', '\\(', '\\)', '\\n', '\\r', '\\']),
         SPLIT,
@@ -576,7 +582,7 @@ module.exports = grammar({
     ),
     // }}}
 
-    comment: $ => token(prec(-1, /#.*/)),
+    comment: _ => token(prec(-1, /#.*/)),
   },
 });
 
@@ -591,7 +597,7 @@ function noneOf(...characters) {
 
 /**
  *
- * @param rule
+ * @param {RuleOrLiteral} rule
  */
 function delimitedVariable(rule) {
   return choice(
@@ -602,11 +608,10 @@ function delimitedVariable(rule) {
 
 /**
  *
- * @param $
- * @param text
- * @param fenced_vars
+ * @param {RuleOrLiteral} text
+ * @param {RuleOrLiteral} fenced_vars
  */
-function text($, text, fenced_vars) {
+function text(text, fenced_vars) {
   const raw_text = token(repeat1(choice(
     text,
     new RegExp('\\\\[' + ESCAPE_SET + ']'),
