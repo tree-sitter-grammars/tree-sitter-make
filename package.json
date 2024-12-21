@@ -1,6 +1,6 @@
 {
   "name": "tree-sitter-make",
-  "version": "0.0.1",
+  "version": "1.1.0",
   "description": "Makefile grammar for tree-sitter",
   "repository": "https://github.com/tree-sitter-grammars/tree-sitter-make",
   "license": "MIT",
