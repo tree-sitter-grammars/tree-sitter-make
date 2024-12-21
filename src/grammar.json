@@ -3782,7 +3782,7 @@
   "extras": [
     {
       "type": "PATTERN",
-      "value": "[\\s]"
+      "value": "\\s"
     },
     {
       "type": "ALIAS",
