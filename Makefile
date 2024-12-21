@@ -4,7 +4,7 @@ endif
 
 LANGUAGE_NAME := tree-sitter-make
 HOMEPAGE_URL := https://github.com/tree-sitter-grammars/tree-sitter-make
-VERSION := 1.1.0
+VERSION := 1.1.1
 
 # repository
 SRC_DIR := src
