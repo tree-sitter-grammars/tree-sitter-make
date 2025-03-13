@@ -55,6 +55,7 @@ const FUNCTIONS = [
   'eval',
   'file',
   'value',
+  'let',
 ];
 
 module.exports = grammar({

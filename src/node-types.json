@@ -674,6 +674,10 @@
             "named": false
           },
           {
+            "type": "let",
+            "named": false
+          },
+          {
             "type": "notdir",
             "named": false
           },
@@ -2254,6 +2258,10 @@
     "named": false
   },
   {
+    "type": "let",
+    "named": false
+  },
+  {
     "type": "notdir",
     "named": false
   },
@@ -2331,11 +2339,11 @@
   },
   {
     "type": "word",
-    "named": false
+    "named": true
   },
   {
     "type": "word",
-    "named": true
+    "named": false
   },
   {
     "type": "wordlist",

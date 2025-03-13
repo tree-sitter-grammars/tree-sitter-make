@@ -2665,6 +2665,13 @@
                   "type": "STRING",
                   "value": "value"
                 }
+              },
+              {
+                "type": "IMMEDIATE_TOKEN",
+                "content": {
+                  "type": "STRING",
+                  "value": "let"
+                }
               }
             ]
           }
