@@ -194,17 +194,7 @@ module.exports = grammar({
       optional(choice(
         ...['@', '-', '+'].map(c => token(prec(1, c))),
       )),
-      optional(seq(
-        alias($.shell_text_with_split, $.shell_text),
-        repeat(seq(
-          // splited recipe lines may start with .RECIPEPREFIX
-          // that shall not be part of the shell_code
-          optional($._recipeprefix),
-          alias($.shell_text_with_split, $.shell_text),
-        )),
-        optional($._recipeprefix),
-      )),
-      alias($._shell_text_without_split, $.shell_text),
+      alias($._line_text, $.shell_text),
     ),
     // }}}
     // Variables {{{
@@ -229,7 +219,7 @@ module.exports = grammar({
       field('name', '.RECIPEPREFIX'),
       optional(WS),
       field('operator', choice(...DEFINE_OPS)),
-      field('value', $.text),
+      field('value', alias($._line_text, $.text)),
       NL,
     ),
 
@@ -240,7 +230,7 @@ module.exports = grammar({
       optional(WS),
       field('operator', choice(...DEFINE_OPS)),
       optional(WS),
-      optional(field('value', $.text)),
+      optional(field('value', alias($._line_text, $.text))),
       NL,
     ),
 
@@ -255,7 +245,7 @@ module.exports = grammar({
       optional(WS),
       field('operator', '!='),
       optional(WS),
-      field('value', $._shell_command),
+      field('value', alias($._line_text, $.shell_command)),
       NL,
     ),
 
@@ -476,7 +466,7 @@ module.exports = grammar({
       token.immediate('('),
       field('function', 'shell'),
       optional(WS),
-      $._shell_command,
+      alias($._paren_text, $.shell_command),
       ')',
     ),
     // }}}
@@ -547,39 +537,24 @@ module.exports = grammar({
     // TODO prefixed line in define is recipe
     _rawline: _ => token(/.*[\r\n]+/), // any line
 
-    _shell_text_without_split: $ => text(
-      noneOf(...['\\$', '\\r', '\\n', '\\']),
-      choice(
-        $._variable,
-        $._function,
-        alias('$$', $.escape),
-        alias('//', $.escape),
-      ),
+    _paren_group: $ => seq(
+      '(',
+      optional($._paren_text),
+      ')',
     ),
 
-    // The SPLIT chars shall be included the injected code
-    shell_text_with_split: $ => seq(
-      $._shell_text_without_split,
-      SPLIT,
-    ),
+    _line_text: $ => makeText($, {
+      disallow: ['\\$', '\\n', '\\r', '\\'],
+      allowSplit: true,
+    }),
 
-    _shell_command: $ => alias(
-      $.text,
-      $.shell_command,
-    ),
+    _paren_text: $ => makeText($, {
+      disallow: ['\\$', '\\(', '\\)', '\\n', '\\r', '\\'],
+      allowSplit: true,
+      extraFenced: [$._paren_group],
+    }),
 
-    text: $ => text(
-      choice(
-        noneOf(...['\\$', '\\(', '\\)', '\\n', '\\r', '\\']),
-        SPLIT,
-      ),
-      choice(
-        $._variable,
-        $._function,
-        alias('$$', $.escape),
-        alias('//', $.escape),
-      ),
-    ),
+    text: $ => $._paren_text,
     // }}}
 
     comment: _ => token(prec(-1, /#.*/)),
@@ -604,6 +579,27 @@ function delimitedVariable(rule) {
     seq(token.immediate('('), rule, ')'),
     seq(token.immediate('{'), rule, '}'),
   );
+}
+
+/**
+ *
+ * @param {GrammarSymbols<string>} $
+ * @param {{ disallow: string[], allowSplit?: boolean, extraFenced?: RuleOrLiteral[] }} opts
+ */
+function makeText($, opts) {
+  const rawText = opts.allowSplit ?
+    choice(noneOf(...opts.disallow), SPLIT) :
+    noneOf(...opts.disallow);
+
+  const fencedVars = choice(
+    $._variable,
+    $._function,
+    alias('$$', $.escape),
+    alias('//', $.escape),
+    ...(opts.extraFenced ?? []),
+  );
+
+  return text(rawText, fencedVars);
 }
 
 /**

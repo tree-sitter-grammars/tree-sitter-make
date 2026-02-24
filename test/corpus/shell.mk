@@ -96,9 +96,10 @@ v = $(shell echo $(foo) ${bar})
     value: (text
       (shell_function
         (shell_command
-          (variable_reference (word))
-          (variable_reference (word)))))))
-
+          (variable_reference
+            (word))
+          (variable_reference
+            (word)))))))
 
 ======================================
 Shell assignment (AKA command expansion)
@@ -109,7 +110,7 @@ v != echo *.ls
 
 (makefile
   (shell_assignment
-     name: (word)
+    name: (word)
     value: (shell_command)))
 
 ============================
@@ -125,21 +126,3 @@ baz
   (shell_assignment
     name: (word)
     value: (shell_command)))
-
-===================================================
-Shell assignment, line split, condensate whitespace
-===================================================
-
-
-========================================
-Shell assignment, escaped delimiter '\)'
-========================================
-
-======================================
-Shell assignment, escaped dolar signal
-======================================
-
-====================================
-Shell assignment, variable reference
-====================================
-
