@@ -282,6 +282,7 @@ target:
 --------------------------------------------------------------------------------
 
 
+
 ================================================================================
 Rule, recipe, single line, custom .RECIPEPREFIX II (TODO)
 :error
@@ -295,6 +296,7 @@ aecho "foobar"
 --------------------------------------------------------------------------------
 
 
+
 ================================================================================
 Rule, recipe, single line, custom .RECIPEPREFIX III (TODO)
 :error
@@ -306,6 +308,7 @@ target: ;
 >echo "foobar"
 
 --------------------------------------------------------------------------------
+
 
 
 ================================================================================
@@ -367,14 +370,12 @@ target:
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text))))
   (rule
     (targets
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text)))))
 
 ================================================================================
@@ -396,14 +397,12 @@ target:
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text))))
   (rule
     (targets
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text)))))
 
 ================================================================================
@@ -421,7 +420,6 @@ target:
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text)))))
 
 ================================================================================
@@ -434,7 +432,8 @@ target:
 
 (makefile
   (rule
-    (targets (word))
+    (targets
+      (word))
     (recipe
       (recipe_line
         (shell_text)))))
@@ -498,7 +497,6 @@ all:
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text)))))
 
 ================================================================================
@@ -542,14 +540,12 @@ target: ; echo "foo\
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text))))
   (rule
     (targets
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text)))))
 
 ================================================================================
@@ -569,14 +565,12 @@ target: ; @echo "foo\
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text))))
   (rule
     (targets
       (word))
     (recipe
       (recipe_line
-        (shell_text)
         (shell_text)))))
 
 ================================================================================
@@ -607,8 +601,6 @@ bar"
       (word))
     (recipe
       (recipe_line
-        (shell_text)
-        (shell_text)
         (shell_text))
       (recipe_line
         (shell_text))))
@@ -617,8 +609,6 @@ bar"
       (word))
     (recipe
       (recipe_line
-        (shell_text)
-        (shell_text)
         (shell_text))
       (recipe_line
         (shell_text)))))
