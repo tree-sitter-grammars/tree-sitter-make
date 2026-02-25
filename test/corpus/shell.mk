@@ -101,6 +101,20 @@ v = $(shell echo $(foo) ${bar})
           (variable_reference
             (word)))))))
 
+==================================
+Shell function, unescaped parentheses
+==================================
+X := $(shell node -e "console.log()")
+
+---
+
+(makefile
+  (variable_assignment
+    name: (word)
+    value: (text
+      (shell_function
+        (shell_command)))))
+
 ======================================
 Shell assignment (AKA command expansion)
 ======================================

@@ -42,3 +42,24 @@ jobs:
           test-python: true
           test-go: true
           test-swift: false
+
+  query:
+    name: Validate queries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up repository
+        uses: actions/checkout@v6
+
+      - name: Set up tree-sitter
+        uses: tree-sitter/setup-action@v2
+        with:
+          install-lib: false
+
+      - name: Build parser
+        run: tree-sitter build
+
+      - name: Set up ts_query_ls
+        run: make ts_query_ls
+
+      - name: Check queries
+        run: make check_queries
