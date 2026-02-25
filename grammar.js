@@ -219,7 +219,7 @@ export default grammar({
       field('name', '.RECIPEPREFIX'),
       optional(WS),
       field('operator', choice(...DEFINE_OPS)),
-      field('value', alias($._line_text, $.text)),
+      field('value', alias($._assignment_text, $.text)),
       NL,
     ),
 
@@ -230,7 +230,7 @@ export default grammar({
       optional(WS),
       field('operator', choice(...DEFINE_OPS)),
       optional(WS),
-      optional(field('value', alias($._line_text, $.text))),
+      optional(field('value', alias($._assignment_text, $.text))),
       NL,
     ),
 
@@ -545,6 +545,12 @@ export default grammar({
 
     _line_text: $ => makeText($, {
       disallow: ['\\$', '\\n', '\\r', '\\'],
+      allowSplit: true,
+    }),
+
+    // Disallow unescaped # so trailing comments tokenize correctly in assignments.
+    _assignment_text: $ => makeText($, {
+      disallow: ['\\$', '\\n', '\\r', '\\', '#'],
       allowSplit: true,
     }),
 
