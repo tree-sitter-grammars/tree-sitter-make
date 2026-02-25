@@ -57,7 +57,7 @@ const FUNCTIONS = [
   'value',
 ];
 
-module.exports = grammar({
+export default grammar({
   name: 'make',
 
   word: $ => $.word,
