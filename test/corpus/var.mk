@@ -179,6 +179,19 @@ v =
   (variable_assignment
     name: (word)))
 
+============================
+Variable, trailing comment
+============================
+CFLAGS=-g # -O3
+
+---
+
+(makefile
+  (variable_assignment
+    name: (word)
+    value: (text)
+    (comment)))
+
 =====================
 Variable, reference
 =====================
