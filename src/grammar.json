@@ -2594,6 +2594,20 @@
                 "type": "IMMEDIATE_TOKEN",
                 "content": {
                   "type": "STRING",
+                  "value": "intcmp"
+                }
+              },
+              {
+                "type": "IMMEDIATE_TOKEN",
+                "content": {
+                  "type": "STRING",
+                  "value": "let"
+                }
+              },
+              {
+                "type": "IMMEDIATE_TOKEN",
+                "content": {
+                  "type": "STRING",
                   "value": "call"
                 }
               },
@@ -2616,6 +2630,13 @@
                 "content": {
                   "type": "STRING",
                   "value": "value"
+                }
+              },
+              {
+                "type": "IMMEDIATE_TOKEN",
+                "content": {
+                  "type": "STRING",
+                  "value": "guile"
                 }
               }
             ]

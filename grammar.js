@@ -51,10 +51,13 @@ const FUNCTIONS = [
   'if',
   'or',
   'and',
+  'intcmp',
+  'let',
   'call',
   'eval',
   'file',
   'value',
+  'guile',
 ];
 
 export default grammar({

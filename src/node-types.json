@@ -658,6 +658,10 @@
             "named": false
           },
           {
+            "type": "guile",
+            "named": false
+          },
+          {
             "type": "if",
             "named": false
           },
@@ -666,11 +670,19 @@
             "named": false
           },
           {
+            "type": "intcmp",
+            "named": false
+          },
+          {
             "type": "join",
             "named": false
           },
           {
             "type": "lastword",
+            "named": false
+          },
+          {
+            "type": "let",
             "named": false
           },
           {
@@ -2219,6 +2231,10 @@
     "named": false
   },
   {
+    "type": "guile",
+    "named": false
+  },
+  {
     "type": "if",
     "named": false
   },
@@ -2247,11 +2263,19 @@
     "named": false
   },
   {
+    "type": "intcmp",
+    "named": false
+  },
+  {
     "type": "join",
     "named": false
   },
   {
     "type": "lastword",
+    "named": false
+  },
+  {
+    "type": "let",
     "named": false
   },
   {
