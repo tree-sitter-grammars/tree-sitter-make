@@ -8,7 +8,6 @@ src/tree_sitter/* linguist-generated
 # C bindings
 bindings/c/* linguist-generated
 CMakeLists.txt linguist-generated
-Makefile linguist-generated
 
 # Rust bindings
 bindings/rust/* linguist-generated

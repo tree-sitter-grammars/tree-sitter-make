@@ -91,4 +91,28 @@ clean:
 test:
 	$(TS) test
 
+
+# ts_query_ls is used to validate tree-sitter queries.
+ifeq ($(shell uname -m),arm64)
+  TS_QUERY_LS_ARCH := aarch64
+else
+  TS_QUERY_LS_ARCH := x86_64
+endif
+
+ifeq ($(shell uname -s),Darwin)
+  TS_QUERY_LS_PLATFORM := apple-darwin
+else
+  TS_QUERY_LS_PLATFORM := unknown-linux-gnu
+endif
+
+TS_QUERY_LS_BIN := ts_query_ls-$(TS_QUERY_LS_ARCH)-$(TS_QUERY_LS_PLATFORM)
+TS_QUERY_LS_URL := https://github.com/ribru17/ts_query_ls/releases/latest/download/$(TS_QUERY_LS_BIN).tar.gz
+
+ts_query_ls:
+	curl -fL $(TS_QUERY_LS_URL) | tar -xz
+
+.PHONY: check_queries
+check_queries: ts_query_ls
+	./ts_query_ls check -f queries
+
 .PHONY: all install uninstall clean test
