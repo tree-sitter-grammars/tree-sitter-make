@@ -1,0 +1,517 @@
+// Make grammar for tree-sitter (native DSL).
+// Translated from grammar.js.
+
+let NL: rule_t = token_immediate(regexp(r"[\r\n]+"))
+let WS: rule_t = token_immediate(regexp(r"[\t ]+"))
+let SPLIT: rule_t = alias(token_immediate(seq("\\", regexp(r"\r?\n|\r"))), "\\")
+
+// Escape-class regex shared by all text-like productions and `word`.
+// From ESCAPE_SET in grammar.js: \\[abtnvfrE!"#\$&'\(\)\*,;<>\?\[\\\]^`{\|}~]
+let _escape_set: rule_t = regexp(r##"\\[abtnvfrE!"#\$&'\(\)\*,;<>\?\[\\\]^`{\|}~]"##)
+let _escape_digits: rule_t = regexp(r"\\[0-9]{3}")
+let _escape_nonl: rule_t = regexp(r"\\[^\n\r]")
+
+// CHARSET for word: a-zA-Z0-9%\+\-\.@_\*\?\/
+let _word_char: rule_t = regexp(r"[a-zA-Z0-9%\+\-\.@_\*\?\/]")
+
+// makeText helpers. Disallow-classes for the 3 text variants:
+// _line_text:        [^\$\n\r\\]
+// _assignment_text:  [^\$\n\r\\#]
+// _paren_text:       [^\$\(\)\n\r\\]
+let _line_class: rule_t = regexp(r"[^\$\n\r\\]")
+let _assignment_class: rule_t = regexp(r"[^\$\n\r\\#]")
+let _paren_class: rule_t = regexp(r"[^\$\(\)\n\r\\]")
+
+// raw_text per spec: token(repeat1(choice(rawText, escape*))).
+// `rawText` for allowSplit=true: choice(noneOf, SPLIT). (All 3 callers set allowSplit=true.)
+macro _raw_text(cls: rule_t) rule_t {
+    token(repeat1(choice(
+        choice(cls, SPLIT),
+        _escape_set,
+        _escape_digits,
+        _escape_nonl,
+    )))
+}
+
+// fenced_vars: choice($._variable, $._function, alias('$$', $.escape), alias('//', $.escape)[, extraFenced...])
+macro _fenced_basic() rule_t {
+    choice(_variable, _function, alias("$$", escape), alias("//", escape))
+}
+macro _fenced_with_paren() rule_t {
+    choice(_variable, _function, alias("$$", escape), alias("//", escape), _paren_group)
+}
+
+// text(raw_text, fenced_vars): choice(seq(rt, repeat(seq(f, optional(rt)))),
+//                                     seq(f, repeat(seq(optional(rt), f)), optional(rt)))
+macro _text_pattern(cls: rule_t, fenced: rule_t) rule_t {
+    choice(
+        seq(_raw_text(cls), repeat(seq(fenced, optional(_raw_text(cls))))),
+        seq(fenced, repeat(seq(optional(_raw_text(cls)), fenced)), optional(_raw_text(cls))),
+    )
+}
+
+// delimitedVariable(r) -> choice(seq('(', r, ')'), seq('{', r, '}'))
+macro _delimited_var(r: rule_t) rule_t {
+    choice(
+        seq(token_immediate("("), r, ")"),
+        seq(token_immediate("{"), r, "}"),
+    )
+}
+
+grammar {
+    language: "make",
+    word: word,
+    extras: [
+        regexp(r"\s"),
+        alias(token(seq("\\", regexp(r"\r?\n|\r"))), "\\"),
+        comment,
+    ],
+    inline: [
+        _targets, _target_pattern, _prerequisites_pattern,
+        _prerequisites, _order_only_prerequisites,
+        _target_or_pattern_assignment,
+        _primary, _name, _string,
+    ],
+}
+
+// 3.1
+rule makefile { repeat(_thing) }
+
+rule _thing {
+    choice(r#rule, _variable_definition, _directive, seq(_function, NL))
+}
+
+// 2.1 - `rule` is reserved; use raw identifier.
+rule r#rule {
+    choice(_ordinary_rule, _static_pattern_rule)
+}
+
+rule _ordinary_rule {
+    prec_right(0, seq(
+        _targets,
+        choice(":", "&:", "::"),
+        optional(WS),
+        optional(_prerequisites),
+        choice(recipe, NL),
+    ))
+}
+
+rule _static_pattern_rule {
+    prec_right(0, seq(
+        _targets,
+        ":",
+        optional(WS),
+        _target_pattern,
+        ":",
+        optional(WS),
+        optional(_prerequisites_pattern),
+        choice(recipe, NL),
+    ))
+}
+
+rule _targets { alias(list, targets) }
+
+rule _target_pattern { field(target, alias(list, pattern_list)) }
+
+rule _prerequisites {
+    choice(
+        _normal_prerequisites,
+        seq(optional(_normal_prerequisites), "|", _order_only_prerequisites),
+    )
+}
+
+rule _normal_prerequisites { field(normal, alias(list, prerequisites)) }
+rule _order_only_prerequisites { field(order_only, alias(list, prerequisites)) }
+rule _prerequisites_pattern { field(prerequisite, alias(list, pattern_list)) }
+
+rule recipe {
+    prec_right(0, choice(
+        seq(
+            _attached_recipe_line,
+            NL,
+            repeat(choice(conditional, _prefixed_recipe_line)),
+        ),
+        seq(NL, repeat1(choice(conditional, _prefixed_recipe_line))),
+    ))
+}
+
+rule _attached_recipe_line { seq(";", optional(recipe_line)) }
+
+rule _prefixed_recipe_line {
+    seq(_recipeprefix, optional(recipe_line), NL)
+}
+
+rule recipe_line {
+    seq(
+        optional(choice(
+            token(prec(1, "@")),
+            token(prec(1, "-")),
+            token(prec(1, "+")),
+        )),
+        alias(_line_text, shell_text),
+    )
+}
+
+// Variables
+rule _variable_definition {
+    choice(
+        VPATH_assignment,
+        RECIPEPREFIX_assignment,
+        variable_assignment,
+        shell_assignment,
+        define_directive,
+    )
+}
+
+rule VPATH_assignment {
+    seq(
+        field(name, "VPATH"),
+        optional(WS),
+        field(operator, choice("=", ":=", "::=", "?=", "+=")),
+        field(value, paths),
+        NL,
+    )
+}
+
+rule RECIPEPREFIX_assignment {
+    seq(
+        field(name, ".RECIPEPREFIX"),
+        optional(WS),
+        field(operator, choice("=", ":=", "::=", "?=", "+=")),
+        field(value, alias(_assignment_text, text)),
+        NL,
+    )
+}
+
+rule variable_assignment {
+    seq(
+        optional(_target_or_pattern_assignment),
+        _name,
+        optional(WS),
+        field(operator, choice("=", ":=", "::=", "?=", "+=")),
+        optional(WS),
+        optional(field(value, alias(_assignment_text, text))),
+        NL,
+    )
+}
+
+rule _target_or_pattern_assignment {
+    seq(field(target_or_pattern, list), ":", optional(WS))
+}
+
+rule shell_assignment {
+    seq(
+        field(name, word),
+        optional(WS),
+        field(operator, "!="),
+        optional(WS),
+        field(value, alias(_line_text, shell_command)),
+        NL,
+    )
+}
+
+rule define_directive {
+    seq(
+        "define",
+        field(name, word),
+        optional(WS),
+        optional(field(operator, choice("=", ":=", "::=", "?=", "+="))),
+        optional(WS),
+        NL,
+        optional(field(value, alias(repeat1(_rawline), raw_text))),
+        token(prec(1, "endef")),
+        NL,
+    )
+}
+
+// Directives
+rule _directive {
+    choice(
+        include_directive, vpath_directive, export_directive,
+        unexport_directive, override_directive, undefine_directive,
+        private_directive, conditional,
+    )
+}
+
+rule include_directive {
+    choice(
+        seq("include", field(filenames, list), NL),
+        seq("sinclude", field(filenames, list), NL),
+        seq("-include", field(filenames, list), NL),
+    )
+}
+
+rule vpath_directive {
+    choice(
+        seq("vpath", NL),
+        seq("vpath", field(pattern, word), NL),
+        seq("vpath", field(pattern, word), field(directories, paths), NL),
+    )
+}
+
+rule export_directive {
+    choice(
+        seq("export", NL),
+        seq("export", field(variables, list), NL),
+        seq("export", variable_assignment),
+    )
+}
+
+rule unexport_directive {
+    choice(
+        seq("unexport", NL),
+        seq("unexport", field(variables, list), NL),
+    )
+}
+
+rule override_directive {
+    choice(
+        seq("override", define_directive),
+        seq("override", variable_assignment),
+        seq("override", undefine_directive),
+    )
+}
+
+rule undefine_directive {
+    seq("undefine", field(variable, word), NL)
+}
+
+rule private_directive { seq("private", variable_assignment) }
+
+// Conditionals
+rule conditional {
+    seq(
+        field(condition, _conditional_directives),
+        optional(field(consequence, _conditional_consequence)),
+        repeat(elsif_directive),
+        optional(else_directive),
+        "endif",
+        NL,
+    )
+}
+
+rule elsif_directive {
+    seq(
+        "else",
+        field(condition, _conditional_directives),
+        optional(field(consequence, _conditional_consequence)),
+    )
+}
+
+rule else_directive {
+    seq(
+        "else",
+        NL,
+        optional(field(consequence, _conditional_consequence)),
+    )
+}
+
+rule _conditional_directives {
+    choice(ifeq_directive, ifneq_directive, ifdef_directive, ifndef_directive)
+}
+
+rule _conditional_consequence {
+    repeat1(choice(_thing, _prefixed_recipe_line))
+}
+
+rule ifeq_directive { seq("ifeq", _conditional_args_cmp, NL) }
+rule ifneq_directive { seq("ifneq", _conditional_args_cmp, NL) }
+rule ifdef_directive { seq("ifdef", field(variable, _primary), NL) }
+rule ifndef_directive { seq("ifndef", field(variable, _primary), NL) }
+
+rule _conditional_args_cmp {
+    choice(
+        seq(
+            "(",
+            optional(field(arg0, _primary)),
+            ",",
+            optional(field(arg1, _primary)),
+            ")",
+        ),
+        seq(field(arg0, _primary), field(arg1, _primary)),
+    )
+}
+
+// Variables
+rule _variable {
+    choice(variable_reference, substitution_reference, automatic_variable)
+}
+
+rule variable_reference {
+    seq(
+        choice("$", "$$"),
+        choice(
+            _delimited_var(_primary),
+            alias(token_immediate(regexp(r".")), word),
+        ),
+    )
+}
+
+rule substitution_reference {
+    seq(
+        choice("$", "$$"),
+        _delimited_var(seq(
+            field(text, _primary),
+            ":",
+            field(pattern, _primary),
+            "=",
+            field(replacement, _primary),
+        )),
+    )
+}
+
+rule automatic_variable {
+    seq(
+        choice("$", "$$"),
+        choice(
+            choice(
+                token_immediate(prec(1, "@")),
+                token_immediate(prec(1, "%")),
+                token_immediate(prec(1, "<")),
+                token_immediate(prec(1, "?")),
+                token_immediate(prec(1, "^")),
+                token_immediate(prec(1, "+")),
+                token_immediate(prec(1, "/")),
+                token_immediate(prec(1, "*")),
+            ),
+            _delimited_var(seq(
+                choice(
+                    token(prec(1, "@")),
+                    token(prec(1, "%")),
+                    token(prec(1, "<")),
+                    token(prec(1, "?")),
+                    token(prec(1, "^")),
+                    token(prec(1, "+")),
+                    token(prec(1, "/")),
+                    token(prec(1, "*")),
+                ),
+                optional(choice(token_immediate("D"), token_immediate("F"))),
+            )),
+        ),
+    )
+}
+
+// Functions
+rule _function { choice(function_call, shell_function) }
+
+rule function_call {
+    seq(
+        choice("$", "$$"),
+        token_immediate("("),
+        field(function, choice(
+            token_immediate("subst"), token_immediate("patsubst"),
+            token_immediate("strip"), token_immediate("findstring"),
+            token_immediate("filter"), token_immediate("filter-out"),
+            token_immediate("sort"), token_immediate("word"),
+            token_immediate("words"), token_immediate("wordlist"),
+            token_immediate("firstword"), token_immediate("lastword"),
+            token_immediate("dir"), token_immediate("notdir"),
+            token_immediate("suffix"), token_immediate("basename"),
+            token_immediate("addsuffix"), token_immediate("addprefix"),
+            token_immediate("join"), token_immediate("wildcard"),
+            token_immediate("realpath"), token_immediate("abspath"),
+            token_immediate("error"), token_immediate("warning"),
+            token_immediate("info"), token_immediate("origin"),
+            token_immediate("flavor"), token_immediate("foreach"),
+            token_immediate("if"), token_immediate("or"),
+            token_immediate("and"), token_immediate("intcmp"),
+            token_immediate("let"), token_immediate("call"),
+            token_immediate("eval"), token_immediate("file"),
+            token_immediate("value"), token_immediate("guile"),
+        )),
+        optional(WS),
+        arguments,
+        ")",
+    )
+}
+
+rule arguments {
+    seq(
+        field(argument, text),
+        repeat(seq(",", field(argument, text))),
+    )
+}
+
+rule shell_function {
+    seq(
+        choice("$", "$$"),
+        token_immediate("("),
+        field(function, "shell"),
+        optional(WS),
+        alias(_paren_text, shell_command),
+        ")",
+    )
+}
+
+// Primary and lists
+rule list {
+    prec(1, seq(
+        _primary,
+        repeat(seq(choice(WS, SPLIT), _primary)),
+        optional(WS),
+    ))
+}
+
+rule paths {
+    seq(
+        _primary,
+        repeat(seq(
+            choice(token_immediate(":"), token_immediate(";")),
+            _primary,
+        )),
+    )
+}
+
+rule _primary {
+    choice(word, archive, _variable, _function, concatenation, string)
+}
+
+rule concatenation {
+    prec_right(0, seq(_primary, repeat1(prec_left(0, _primary))))
+}
+
+rule _name { field(name, word) }
+
+rule string {
+    field(string, choice(
+        seq("\"", optional(_string), "\""),
+        seq("'", optional(_string), "'"),
+    ))
+}
+
+rule _string {
+    repeat1(choice(
+        _variable,
+        _function,
+        token(prec(-1, regexp(r#"([^'"$\r\n\\]|\\\\|\\[^\r\n])+"#))),
+    ))
+}
+
+rule word {
+    token(repeat1(choice(_word_char, _escape_set, _escape_digits)))
+}
+
+rule archive {
+    seq(
+        field(archive, word),
+        token_immediate("("),
+        field(members, list),
+        token_immediate(")"),
+    )
+}
+
+// Tokens
+rule _recipeprefix { "\t" }
+rule _rawline { token(regexp(r".*[\r\n]+")) }
+
+rule _paren_group {
+    seq("(", optional(_paren_text), ")")
+}
+
+rule _line_text       { _text_pattern(_line_class, _fenced_basic()) }
+rule _assignment_text { _text_pattern(_assignment_class, _fenced_basic()) }
+rule _paren_text      { _text_pattern(_paren_class, _fenced_with_paren()) }
+
+rule text { _paren_text }
+
+rule comment { token(prec(-1, regexp(r"#.*"))) }
